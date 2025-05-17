@@ -36,7 +36,7 @@ export default function Header() {
         <div className="flex items-center gap-2 md:gap-3">
           {/* BMKG Logo */}
           <a href="https://www.bmkg.go.id" target="_blank" rel="noopener noreferrer">
-            <div className="relative h-8 w-8 md:h-10 md:w-10 logo-glow bmkg-logo">
+            <div className="relative h-8 w-8 md:h-10 md:w-10">
               <Image
                 src="https://www.bmkg.go.id/images/profil/logo-bmkg.png"
                 alt="Logo BMKG"
@@ -50,7 +50,7 @@ export default function Header() {
 
           {/* TNI AU Logo */}
           <a href="https://tni-au.mil.id" target="_blank" rel="noopener noreferrer">
-            <div className="relative h-8 w-8 md:h-10 md:w-10 logo-glow tni-logo">
+            <div className="relative h-8 w-8 md:h-10 md:w-10">
               <Image
                 src="https://upload.wikimedia.org/wikipedia/commons/1/1c/Lambang_TNI_AU.png"
                 alt="Logo TNI AU"
@@ -64,7 +64,7 @@ export default function Header() {
 
           {/* STMKG Logo */}
           <a href="https://stmkg.ac.id" target="_blank" rel="noopener noreferrer">
-            <div className="relative h-8 w-8 md:h-10 md:w-10 logo-glow stmkg-logo">
+            <div className="relative h-8 w-8 md:h-10 md:w-10">
               <Image
                 src="https://upload.wikimedia.org/wikipedia/id/c/ca/Stmkg-new.png"
                 alt="Logo STMKG"

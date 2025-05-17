@@ -73,18 +73,6 @@
   transform: scale(1.05);
 }
 
-.bmkg-logo {
-  box-shadow: 0 0 8px var(--bmkg-glow);
-}
-
-.tni-logo {
-  box-shadow: 0 0 8px var(--tni-glow);
-}
-
-.stmkg-logo {
-  box-shadow: 0 0 8px var(--stmkg-glow);
-}
-
 /* Ensure sidebar extends to full height */
 .admin-sidebar {
   height: calc(100vh - 4rem);
