@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, Eye, EyeOff } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -18,6 +18,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const { login, isAuthenticated, isLoading: authLoading } = useAdmin()
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
@@ -47,13 +48,17 @@ export default function LoginPage() {
     }
   }
 
+  const toggleShowPassword = () => {
+    setShowPassword(!showPassword)
+  }
+
   if (!mounted || authLoading || isAuthenticated) {
     return <LoginSkeleton />
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center">
-      <Card className="mx-auto max-w-sm">
+    <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4">
+      <Card className="mx-auto w-full max-w-sm sm:max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl">Login Admin</CardTitle>
           <CardDescription>Masukkan email dan password untuk mengakses panel admin</CardDescription>
@@ -79,13 +84,27 @@ export default function LoginPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={toggleShowPassword}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <Eye className="h-4 w-4" aria-hidden="true" />
+                  )}
+                  <span className="sr-only">{showPassword ? "Hide password" : "Show password"}</span>
+                </button>
+              </div>
             </div>
           </CardContent>
           <CardFooter>
@@ -101,8 +120,8 @@ export default function LoginPage() {
 
 function LoginSkeleton() {
   return (
-    <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center">
-      <Card className="mx-auto max-w-sm w-full">
+    <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4">
+      <Card className="mx-auto w-full max-w-sm sm:max-w-md">
         <CardHeader className="space-y-1">
           <Skeleton className="h-8 w-[180px]" />
           <Skeleton className="h-4 w-[280px]" />

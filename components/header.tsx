@@ -36,12 +36,12 @@ export default function Header() {
         <div className="flex items-center gap-2 md:gap-3">
           {/* BMKG Logo */}
           <a href="https://www.bmkg.go.id" target="_blank" rel="noopener noreferrer">
-            <div className="relative h-8 w-8 md:h-10 md:w-10">
+            <div className="relative h-8 w-8 md:h-10 md:w-10 logo-glow bmkg-logo">
               <Image
                 src="https://www.bmkg.go.id/images/profil/logo-bmkg.png"
                 alt="Logo BMKG"
-                width={35}
-                height={35}
+                width={40}
+                height={40}
                 className="object-contain"
                 crossOrigin="anonymous"
               />
@@ -50,7 +50,7 @@ export default function Header() {
 
           {/* TNI AU Logo */}
           <a href="https://tni-au.mil.id" target="_blank" rel="noopener noreferrer">
-            <div className="relative h-8 w-8 md:h-10 md:w-10">
+            <div className="relative h-8 w-8 md:h-10 md:w-10 logo-glow tni-logo">
               <Image
                 src="https://upload.wikimedia.org/wikipedia/commons/1/1c/Lambang_TNI_AU.png"
                 alt="Logo TNI AU"
@@ -64,12 +64,12 @@ export default function Header() {
 
           {/* STMKG Logo */}
           <a href="https://stmkg.ac.id" target="_blank" rel="noopener noreferrer">
-            <div className="relative h-8 w-8 md:h-10 md:w-10">
+            <div className="relative h-8 w-8 md:h-10 md:w-10 logo-glow stmkg-logo">
               <Image
                 src="https://upload.wikimedia.org/wikipedia/id/c/ca/Stmkg-new.png"
                 alt="Logo STMKG"
-                width={40}
-                height={40}
+                width={45}
+                height={45}
                 className="object-contain"
                 crossOrigin="anonymous"
               />
@@ -107,31 +107,29 @@ export default function Header() {
               Logout
             </Button>
           )}
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="md:hidden">
-                <Menu className="h-5 w-5" />
-                <span className="sr-only">Toggle menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right">
-              <nav className="flex flex-col gap-4 pt-10">
-                {isAuthenticated && (
-                  <>
-                    <Link href="/" className="text-lg font-medium transition-colors hover:text-primary">
-                      Dashboard
-                    </Link>
-                    <Link href="/admin" className="text-lg font-medium transition-colors hover:text-primary">
-                      Admin Panel
-                    </Link>
-                    <Button variant="outline" onClick={logout} className="mt-4">
-                      Logout
-                    </Button>
-                  </>
-                )}
-              </nav>
-            </SheetContent>
-          </Sheet>
+          {isAuthenticated && (
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" className="md:hidden">
+                  <Menu className="h-5 w-5" />
+                  <span className="sr-only">Toggle menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[85%] max-w-xs sm:max-w-sm">
+                <nav className="flex flex-col gap-4 pt-10">
+                  <Link href="/" className="text-lg font-medium transition-colors hover:text-primary">
+                    Dashboard
+                  </Link>
+                  <Link href="/admin" className="text-lg font-medium transition-colors hover:text-primary">
+                    Admin Panel
+                  </Link>
+                  <Button variant="outline" onClick={logout} className="mt-4">
+                    Logout
+                  </Button>
+                </nav>
+              </SheetContent>
+            </Sheet>
+          )}
         </div>
       </div>
     </header>

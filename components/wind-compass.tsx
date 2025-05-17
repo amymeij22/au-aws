@@ -33,6 +33,10 @@ export default function WindCompass({ direction, speed = 0, showSpeed = false }:
     const primaryColor = getComputedStyle(document.documentElement).getPropertyValue("--primary").trim()
     const mutedColor = getComputedStyle(document.documentElement).getPropertyValue("--muted-foreground").trim()
 
+    // Check if we're in light mode to adjust text colors
+    const isLightMode =
+      document.documentElement.classList.contains("light") || !document.documentElement.classList.contains("dark")
+
     // Draw compass outer border
     ctx.beginPath()
     ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI)
@@ -68,7 +72,10 @@ export default function WindCompass({ direction, speed = 0, showSpeed = false }:
     ctx.font = "bold 14px sans-serif"
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
-    ctx.fillStyle = `hsl(${foregroundColor})`
+
+    // Use darker text color for light mode to ensure visibility
+    const directionTextColor = isLightMode ? "hsl(222.2 84% 4.9%)" : `hsl(${foregroundColor})`
+    ctx.fillStyle = directionTextColor
 
     const textRadius = radius + 15
 
@@ -83,7 +90,9 @@ export default function WindCompass({ direction, speed = 0, showSpeed = false }:
 
     // Draw intercardinal directions
     ctx.font = "12px sans-serif"
-    ctx.fillStyle = `hsl(${mutedColor})`
+    // Use a darker muted color for light mode
+    const intercardinalTextColor = isLightMode ? "hsl(215.4 16.3% 36.9%)" : `hsl(${mutedColor})`
+    ctx.fillStyle = intercardinalTextColor
 
     // Calculate positions for intercardinal directions
     const diagonalOffset = textRadius * 0.7071 // cos(45°) = sin(45°) ≈ 0.7071
@@ -166,7 +175,7 @@ export default function WindCompass({ direction, speed = 0, showSpeed = false }:
     ctx.font = "bold 24px sans-serif"
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
-    ctx.fillStyle = `hsl(${foregroundColor})`
+    ctx.fillStyle = directionTextColor
     ctx.fillText(`${Math.round(direction)}°`, centerX, centerY)
 
     // Draw speed text if needed
@@ -175,7 +184,7 @@ export default function WindCompass({ direction, speed = 0, showSpeed = false }:
       ctx.font = "bold 20px sans-serif"
       ctx.textAlign = "center"
       ctx.textBaseline = "middle"
-      ctx.fillStyle = `hsl(${foregroundColor})`
+      ctx.fillStyle = directionTextColor
       ctx.fillText(`${speed.toFixed(1)}`, centerX, centerY - 30)
 
       // Draw unit text
