@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { AlertCircle, Eye, EyeOff } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
+import Image from "next/image"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -57,8 +58,15 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4">
-      <Card className="mx-auto w-full max-w-sm sm:max-w-md">
+    <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 relative">
+      {/* Background Logo */}
+      <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
+        <div className="relative w-[80%] max-w-[500px] aspect-square opacity-[0.04] dark:opacity-[0.06]">
+          <Image src="/images/tni-au-logo.png" alt="TNI AU Background" fill className="object-contain" priority />
+        </div>
+      </div>
+      
+      <Card className="mx-auto w-full max-w-sm sm:max-w-md relative z-10">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl">Login Admin</CardTitle>
           <CardDescription>Masukkan email dan password untuk mengakses panel admin</CardDescription>
@@ -120,8 +128,15 @@ export default function LoginPage() {
 
 function LoginSkeleton() {
   return (
-    <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4">
-      <Card className="mx-auto w-full max-w-sm sm:max-w-md">
+    <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 relative">
+      {/* Background Logo */}
+      <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
+        <div className="relative w-[80%] max-w-[500px] aspect-square opacity-[0.04] dark:opacity-[0.06]">
+          <Image src="/images/tni-au-logo.png" alt="TNI AU Background" fill className="object-contain" priority />
+        </div>
+      </div>
+      
+      <Card className="mx-auto w-full max-w-sm sm:max-w-md relative z-10">
         <CardHeader className="space-y-1">
           <Skeleton className="h-8 w-[180px]" />
           <Skeleton className="h-4 w-[280px]" />
