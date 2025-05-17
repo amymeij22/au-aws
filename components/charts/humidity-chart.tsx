@@ -36,6 +36,18 @@ export default function HumidityChart({ height = 150 }: HumidityChartProps) {
 
   const last24Hours = historicalData.slice(-24)
 
+  // Jika tidak ada data, tampilkan pesan
+  if (last24Hours.length === 0) {
+    return (
+      <div 
+        style={{ height: `${height}px` }}
+        className="flex items-center justify-center text-muted-foreground"
+      >
+        Belum ada data
+      </div>
+    )
+  }
+
   const data = {
     labels: last24Hours.map((item) => format(new Date(item.timestamp), "HH:mm")),
     datasets: [

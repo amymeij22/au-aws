@@ -15,12 +15,12 @@ import { Skeleton } from "@/components/ui/skeleton"
 import Image from "next/image"
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("")
+  const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
+  const [loginError, setLoginError] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const { login, isAuthenticated, isLoading: authLoading } = useAdmin()
+  const { login, isAuthenticated, isLoading: authLoading, error: contextError } = useAdmin()
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
 
@@ -36,16 +36,16 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError("")
-    setIsLoading(true)
+    setLoginError("")
+    setIsSubmitting(true)
 
     try {
-      await login(email, password)
+      await login({ username, password })
       router.push("/admin")
     } catch (err) {
-      setError("Email atau password salah. Silakan coba lagi.")
+      setLoginError(err instanceof Error ? err.message : "Username atau password salah. Silakan coba lagi.")
     } finally {
-      setIsLoading(false)
+      setIsSubmitting(false)
     }
   }
 
@@ -69,24 +69,23 @@ export default function LoginPage() {
       <Card className="mx-auto w-full max-w-sm sm:max-w-md relative z-10">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl">Login Admin</CardTitle>
-          <CardDescription>Masukkan email dan password untuk mengakses panel admin</CardDescription>
+          <CardDescription>Masukkan username dan password untuk mengakses panel admin</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
-            {error && (
+            {(loginError || contextError) && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>{loginError || contextError}</AlertDescription>
               </Alert>
             )}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="username">Username</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="nama@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="username"
+                placeholder="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
               />
             </div>
@@ -116,8 +115,8 @@ export default function LoginPage() {
             </div>
           </CardContent>
           <CardFooter>
-            <Button className="w-full" type="submit" disabled={isLoading}>
-              {isLoading ? "Memproses..." : "Login"}
+            <Button className="w-full" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Memproses..." : "Login"}
             </Button>
           </CardFooter>
         </form>

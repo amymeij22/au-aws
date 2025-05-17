@@ -1,12 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef, KeyboardEvent } from "react"
 import { useAdmin } from "@/context/admin-context"
 import { useWeatherData } from "@/context/weather-data-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Calendar, ChevronLeft, ChevronRight, Download, FileJson, Trash2 } from "lucide-react"
+import { Calendar, ChevronLeft, ChevronRight, Download, FileJson, Trash2, ShieldAlert, Loader2, Eye, EyeOff } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -25,16 +25,27 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { supabase } from "@/lib/supabase"
+import { useToast } from "@/hooks/use-toast"
 import type { WeatherData } from "@/types/weather"
 
 export default function HistoryPage() {
-  const { isAuthenticated, isLoading } = useAdmin()
+  const { isAuthenticated, isLoading, currentAdmin } = useAdmin()
   const { historicalData, clearHistoricalData } = useWeatherData()
   const router = useRouter()
+  const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
   const [date, setDate] = useState<Date | undefined>(undefined)
   const [filteredData, setFilteredData] = useState<WeatherData[]>([])
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [adminPassword, setAdminPassword] = useState("")
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [isVerifying, setIsVerifying] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const passwordInputRef = useRef<HTMLInputElement>(null)
 
   // Pagination state
   const [pageSize, setPageSize] = useState(10)
@@ -111,6 +122,83 @@ export default function HistoryPage() {
     }
   }
 
+  const verifyAdminPassword = async () => {
+    if (!currentAdmin) return false
+    
+    try {
+      setIsVerifying(true)
+      setPasswordError(null)
+      
+      // Verifikasi password admin melalui RPC
+      const { data, error } = await supabase.rpc('check_admin_password', {
+        p_username: currentAdmin.username,
+        p_password: adminPassword
+      })
+      
+      if (error) {
+        console.error('Verification error:', error)
+        setPasswordError('Gagal memverifikasi password')
+        return false
+      }
+      
+      if (data && data.length > 0) {
+        return true
+      } else {
+        setPasswordError('Password tidak valid')
+        return false
+      }
+    } catch (err) {
+      console.error('Password verification error:', err)
+      setPasswordError('Terjadi kesalahan saat verifikasi')
+      return false
+    } finally {
+      setIsVerifying(false)
+    }
+  }
+  
+  const handleDeleteData = async () => {
+    // Verifikasi password admin
+    const isPasswordValid = await verifyAdminPassword()
+    
+    if (isPasswordValid) {
+      try {
+        setIsDeleting(true)
+        
+        // Password valid, lanjutkan penghapusan data
+        const success = await clearHistoricalData()
+        
+        setIsDeleting(false)
+        setIsDeleteDialogOpen(false)
+        setAdminPassword("") // Reset password input
+        
+        if (success) {
+          // Tampilkan notifikasi sukses
+          toast({
+            title: "Penghapusan berhasil",
+            description: "Semua data cuaca telah dihapus dari database",
+            variant: "default",
+          })
+        } else {
+          // Gagal menghapus data
+          toast({
+            title: "Penghapusan gagal",
+            description: "Gagal menghapus data cuaca dari database. Silakan coba lagi.",
+            variant: "destructive",
+          })
+        }
+      } catch (error) {
+        console.error("Error deleting data:", error)
+        setIsDeleting(false)
+        
+        toast({
+          title: "Terjadi kesalahan",
+          description: "Ada masalah saat menghapus data cuaca. Silakan coba lagi nanti.",
+          variant: "destructive",
+        })
+      }
+    }
+  }
+
   const downloadCSV = () => {
     const headers = [
       "Timestamp",
@@ -162,6 +250,23 @@ export default function HistoryPage() {
     document.body.removeChild(link)
   }
 
+  // Handler untuk keydown event pada password input
+  const handlePasswordKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && adminPassword && !isVerifying && !isDeleting) {
+      e.preventDefault()
+      handleDeleteData()
+    }
+  }
+  
+  // Focus password input saat dialog terbuka
+  useEffect(() => {
+    if (isDeleteDialogOpen && passwordInputRef.current) {
+      setTimeout(() => {
+        passwordInputRef.current?.focus()
+      }, 100)
+    }
+  }, [isDeleteDialogOpen])
+
   if (!mounted || isLoading || !isAuthenticated) {
     return <HistoryPageSkeleton />
   }
@@ -200,20 +305,64 @@ export default function HistoryPage() {
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Konfirmasi Hapus</AlertDialogTitle>
+                  <AlertDialogTitle>Konfirmasi Hapus Data</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Apakah Anda yakin ingin menghapus semua data historis? Tindakan ini tidak dapat dibatalkan.
+                    <div className="space-y-4">
+                      <p>Tindakan ini akan menghapus semua data cuaca historis dan tidak dapat dibatalkan.</p>
+                      <div className="border rounded-md p-4 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800 flex">
+                        <ShieldAlert className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 mr-3 flex-shrink-0" />
+                        <p className="text-sm text-amber-800 dark:text-amber-300">
+                          Untuk melanjutkan, harap konfirmasi dengan memasukkan password admin Anda.
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="admin-password">Password Admin ({currentAdmin?.username})</Label>
+                        <div className="relative">
+                          <Input
+                            id="admin-password"
+                            type={showPassword ? "text" : "password"}
+                            value={adminPassword}
+                            onChange={(e) => setAdminPassword(e.target.value)}
+                            placeholder="Masukkan password Anda"
+                            ref={passwordInputRef}
+                            onKeyDown={handlePasswordKeyDown}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                            aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
+                        {passwordError && (
+                          <p className="text-sm text-destructive">{passwordError}</p>
+                        )}
+                      </div>
+                    </div>
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Batal</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => {
-                      clearHistoricalData()
-                      setIsDeleteDialogOpen(false)
-                    }}
+                  <AlertDialogCancel 
+                    onClick={() => setAdminPassword("")}
+                    disabled={isVerifying || isDeleting}
                   >
-                    Hapus
+                    Batal
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteData}
+                    disabled={!adminPassword || isVerifying || isDeleting}
+                    className="gap-1"
+                  >
+                    {isVerifying && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {isDeleting && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {isVerifying ? 'Memverifikasi...' : 
+                     isDeleting ? 'Menghapus Data...' : 'Hapus Data'}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

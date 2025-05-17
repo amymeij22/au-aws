@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useWeatherData } from "@/context/weather-data-context"
 import { formatDate } from "@/lib/utils"
@@ -10,23 +10,132 @@ import RadiationChart from "@/components/charts/radiation-chart"
 import WindCompass from "@/components/wind-compass"
 import { Skeleton } from "@/components/ui/skeleton"
 import Image from "next/image"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AlertCircle } from "lucide-react"
+import { supabase } from "@/lib/supabase"
+import type { WeatherData } from "@/types/weather"
+
+// Refresh interval dalam milliseconds (10 detik)
+const AUTO_REFRESH_INTERVAL = 10000;
 
 export default function Dashboard() {
-  const { currentData, stationMetadata, lastUpdated } = useWeatherData()
+  const { currentData, stationMetadata, lastUpdated, isLoading, error } = useWeatherData()
   const [mounted, setMounted] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+
+  // Fungsi untuk mengambil data terbaru dari Supabase
+  const fetchLatestData = useCallback(async () => {
+    if (refreshing || !mounted) return;
+    
+    try {
+      setRefreshing(true);
+      
+      // Ambil data terakhir dari database
+      const { data, error: fetchError } = await supabase
+        .from('weather_data')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (fetchError) {
+        console.error("Error fetching latest data:", fetchError);
+        return;
+      }
+      
+      if (data) {
+        // Periksa apakah data yang diambil lebih baru dari yang ditampilkan
+        const newTimestamp = new Date(data.timestamp).getTime();
+        const currentTimestamp = lastUpdated ? new Date(lastUpdated).getTime() : 0;
+        
+        if (newTimestamp > currentTimestamp) {
+          console.log("Dashboard: Memperbarui data dari database");
+          
+          // Format data ke format WeatherData
+          const weatherData: WeatherData = {
+            timestamp: data.timestamp,
+            temperature: data.temperature,
+            humidity: data.humidity,
+            pressure: data.pressure,
+            radiation: data.radiation,
+            windSpeed: data.wind_speed,
+            windDirection: data.wind_direction,
+            rainfall: data.rainfall
+          };
+          
+          // Update context dengan data terbaru
+          // Note: Ini tidak mengubah data di konteks karena hanya membaca
+          // Tapi setidaknya kita tahu ada data baru
+          console.log("Data terbaru:", weatherData);
+        }
+      }
+    } catch (err) {
+      console.error("Error refreshing data:", err);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [lastUpdated, mounted, refreshing]);
+
+  // Aktifkan auto-refresh
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchLatestData();
+    }, AUTO_REFRESH_INTERVAL);
+    
+    return () => clearInterval(interval);
+  }, [fetchLatestData]);
 
   useEffect(() => {
     setMounted(true)
-  }, [])
+    
+    // Ambil data pertama kali
+    fetchLatestData();
+    
+    // Realtime subscription ke table weather_data
+    const subscription = supabase
+      .channel('weather_changes')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'weather_data'
+      }, () => {
+        // Ada data baru, refresh manual
+        fetchLatestData();
+      })
+      .subscribe();
+      
+    return () => {
+      // Cleanup subscription
+      subscription.unsubscribe();
+    };
+  }, [fetchLatestData])
 
   if (!mounted) {
     return <DashboardSkeleton />
   }
 
+  if (isLoading) {
+    return <DashboardSkeleton />
+  }
+
   return (
     <div className="relative">
+      {/* Background Logo */}
+      <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
+        <div className="relative w-[80%] max-w-[500px] aspect-square opacity-[0.04] dark:opacity-[0.06]">
+          <Image src="/images/tni-au-logo.png" alt="TNI AU Background" fill className="object-contain" priority />
+        </div>
+      </div>
+
       {/* Main Content */}
       <div className="container mx-auto py-4 px-4 sm:px-6 relative z-10">
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
         <div className="mb-6 text-center">
           <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Automatic Weather Station Monitoring</h1>
           <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-sm text-muted-foreground">

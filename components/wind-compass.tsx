@@ -1,15 +1,27 @@
 "use client"
 
 import { useEffect, useRef } from "react"
+import { useWeatherData } from "@/context/weather-data-context"
 
 interface WindCompassProps {
   direction: number
   speed?: number
   showSpeed?: boolean
+  noDataMessage?: boolean
 }
 
-export default function WindCompass({ direction, speed = 0, showSpeed = false }: WindCompassProps) {
+export default function WindCompass({ 
+  direction, 
+  speed = 0, 
+  showSpeed = false, 
+  noDataMessage = true 
+}: WindCompassProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const { currentData } = useWeatherData()
+  
+  // Periksa apakah tidak ada data cuaca dan direction adalah 0
+  // Ini akan menandakan bahwa belum ada data yang dikirimkan
+  const isNoData = noDataMessage && currentData === null && direction === 0
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -22,10 +34,25 @@ export default function WindCompass({ direction, speed = 0, showSpeed = false }:
     const height = canvas.height
     const centerX = width / 2
     const centerY = height / 2
-    const radius = Math.min(width, height) / 2 - 20
-
+    
     // Clear canvas
     ctx.clearRect(0, 0, width, height)
+    
+    // Jika tidak ada data, tampilkan teks informasi dan hentikan rendering kompas
+    if (isNoData) {
+      ctx.font = "bold 14px sans-serif"
+      ctx.textAlign = "center"
+      ctx.textBaseline = "middle"
+      
+      // Get muted foreground color
+      const mutedColor = getComputedStyle(document.documentElement).getPropertyValue("--muted-foreground").trim()
+      ctx.fillStyle = `hsl(${mutedColor})`
+      
+      ctx.fillText("Belum ada data", centerX, centerY)
+      return
+    }
+    
+    const radius = Math.min(width, height) / 2 - 20
 
     // Get theme colors
     const foregroundColor = getComputedStyle(document.documentElement).getPropertyValue("--foreground").trim()
@@ -197,7 +224,7 @@ export default function WindCompass({ direction, speed = 0, showSpeed = false }:
     ctx.font = "bold 14px sans-serif"
     ctx.fillStyle = arrowColor
     ctx.fillText(directionText, centerX, centerY + radius + 35)
-  }, [direction, speed, showSpeed])
+  }, [direction, speed, showSpeed, isNoData])
 
   // Helper function to get direction text
   const getDirectionText = (degrees: number) => {
