@@ -25,13 +25,6 @@ export default function Dashboard() {
 
   return (
     <div className="relative">
-      {/* Background Logo */}
-      <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
-        <div className="relative w-[80%] max-w-[500px] aspect-square opacity-[0.04] dark:opacity-[0.06]">
-          <Image src="/images/tni-au-logo.png" alt="TNI AU Background" fill className="object-contain" priority />
-        </div>
-      </div>
-      
       {/* Main Content */}
       <div className="container mx-auto py-4 px-4 sm:px-6 relative z-10">
         <div className="mb-6 text-center">
@@ -170,7 +163,7 @@ function DashboardSkeleton() {
     <div className="relative">
       {/* Background Logo */}
       <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
-        <div className="relative w-[80%] max-w-[500px] aspect-square opacity-[0.04] dark:opacity-[0.06]">
+        <div className="relative w-[80%] max-w-[800px] aspect-square opacity-[0.04] dark:opacity-[0.06]">
           <Image src="/images/tni-au-logo.png" alt="TNI AU Background" fill className="object-contain" priority />
         </div>
       </div>

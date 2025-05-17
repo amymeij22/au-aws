@@ -14,7 +14,6 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "AWS Monitoring - TNI AU",
   description: "Website Monitoring Automatic Weather Station (AWS) untuk Mendukung Operasional Penerbangan TNI AU",
-    generator: 'v0.dev'
 }
 
 export default function RootLayout({

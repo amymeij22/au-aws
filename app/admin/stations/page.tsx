@@ -6,39 +6,19 @@ import { useWeatherData } from "@/context/weather-data-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Pencil, Plus, Trash2 } from "lucide-react"
+import { Pencil } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Skeleton } from "@/components/ui/skeleton"
 import StationForm from "@/components/admin/station-form"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import type { StationMetadata } from "@/types/weather"
 
 export default function StationsPage() {
   const { isAuthenticated, isLoading } = useAdmin()
-  const { stationMetadata, addStationMetadata, updateStationMetadata, deleteStationMetadata } = useWeatherData()
+  const { stationMetadata, updateStationMetadata } = useWeatherData()
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [selectedStation, setSelectedStation] = useState<StationMetadata | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -51,21 +31,7 @@ export default function StationsPage() {
   }, [mounted, isLoading, isAuthenticated, router])
 
   const handleEdit = (station: StationMetadata) => {
-    setSelectedStation(station)
     setIsEditDialogOpen(true)
-  }
-
-  const handleDelete = (station: StationMetadata) => {
-    setSelectedStation(station)
-    setIsDeleteDialogOpen(true)
-  }
-
-  const confirmDelete = () => {
-    if (selectedStation) {
-      deleteStationMetadata(selectedStation.id)
-      setIsDeleteDialogOpen(false)
-      setSelectedStation(null)
-    }
   }
 
   if (!mounted || isLoading || !isAuthenticated) {
@@ -76,33 +42,13 @@ export default function StationsPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6">
         <h1 className="text-3xl font-bold">Pengelolaan Stasiun</h1>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Tambah Stasiun
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Tambah Stasiun Baru</DialogTitle>
-              <DialogDescription>Isi form berikut untuk menambahkan stasiun baru.</DialogDescription>
-            </DialogHeader>
-            <StationForm
-              onSubmit={(data) => {
-                addStationMetadata(data)
-                setIsAddDialogOpen(false)
-              }}
-            />
-          </DialogContent>
-        </Dialog>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Daftar Stasiun</CardTitle>
+          <CardTitle>Metadata Stasiun</CardTitle>
           <CardDescription>Kelola metadata stasiun cuaca.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -137,10 +83,6 @@ export default function StationsPage() {
                         <Pencil className="h-4 w-4" />
                         <span className="sr-only">Edit</span>
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(station)}>
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Delete</span>
-                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
@@ -157,34 +99,17 @@ export default function StationsPage() {
             <DialogTitle>Edit Stasiun</DialogTitle>
             <DialogDescription>Ubah informasi stasiun.</DialogDescription>
           </DialogHeader>
-          {selectedStation && (
+          {stationMetadata && (
             <StationForm
-              station={selectedStation}
+              station={stationMetadata}
               onSubmit={(data) => {
-                updateStationMetadata({ ...data, id: selectedStation.id })
+                updateStationMetadata({ ...data, id: stationMetadata.id })
                 setIsEditDialogOpen(false)
-                setSelectedStation(null)
               }}
             />
           )}
         </DialogContent>
       </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Konfirmasi Hapus</AlertDialogTitle>
-            <AlertDialogDescription>
-              Apakah Anda yakin ingin menghapus stasiun {selectedStation?.name}? Tindakan ini tidak dapat dibatalkan.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>Hapus</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }
@@ -192,9 +117,8 @@ export default function StationsPage() {
 function StationsPageSkeleton() {
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6">
         <Skeleton className="h-10 w-[200px] md:w-[250px]" />
-        <Skeleton className="h-10 w-[150px]" />
       </div>
 
       <Card>
@@ -212,7 +136,7 @@ function StationsPageSkeleton() {
               <Skeleton className="h-5 w-[80px]" />
               <Skeleton className="h-5 w-[80px]" />
             </div>
-            {Array(2)
+            {Array(1)
               .fill(0)
               .map((_, i) => (
                 <div key={i} className="flex items-center justify-between py-2 border-b">
@@ -222,7 +146,6 @@ function StationsPageSkeleton() {
                   <Skeleton className="h-5 w-[80px]" />
                   <Skeleton className="h-5 w-[80px]" />
                   <div className="flex gap-2">
-                    <Skeleton className="h-8 w-8 rounded-md" />
                     <Skeleton className="h-8 w-8 rounded-md" />
                   </div>
                 </div>
