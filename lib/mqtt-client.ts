@@ -1,5 +1,5 @@
 import mqtt from 'mqtt'
-import type { MqttConfig, HiveMqPayload, MqttPacket } from '@/types/mqtt'
+import type { MqttConfig, HiveMqPayload } from '@/types/mqtt'
 import type { WeatherData } from '@/types/weather'
 
 type MqttConnectionOptions = {
@@ -16,6 +16,8 @@ let subscribedTopic: string | null = null
 const processedMessageIds = new Set<string>()
 // Maksimum jumlah Message IDs yang disimpan
 const MAX_PROCESSED_MESSAGES = 500
+// Interval untuk keepalive check
+let keepaliveInterval: NodeJS.Timeout | null = null
 
 // Converts HiveMQ payload to our WeatherData format
 export function parseMqttPayload(payload: HiveMqPayload): WeatherData {
@@ -76,8 +78,11 @@ function addProcessedMessage(messageId: string): void {
   // Batasi ukuran set
   if (processedMessageIds.size > MAX_PROCESSED_MESSAGES) {
     // Hapus entry pertama (paling lama)
-    const firstKey = processedMessageIds.values().next().value
-    processedMessageIds.delete(firstKey)
+    const iterator = processedMessageIds.values()
+    const firstKey = iterator.next().value
+    if (firstKey) {
+      processedMessageIds.delete(firstKey)
+    }
   }
 }
 
@@ -96,15 +101,19 @@ export function connectMqtt(config: MqttConfig, options: MqttConnectionOptions):
     const wsProtocol = config.port === 8884 ? 'wss' : 'ws'
     const connectUrl = `${wsProtocol}://${config.url}:${config.port}/mqtt`
     
-    // Connection options dengan QoS 2 (Exactly once)
+    // Connection options dengan QoS 0 (At most once) untuk performa lebih baik
     const mqttOptions: mqtt.IClientOptions = {
       clientId: getClientId(), // ID klien yang persisten
       clean: true,
-      reconnectPeriod: 5000, // Try to reconnect every 5 seconds
+      reconnectPeriod: 2000, // Try to reconnect every 2 seconds (lebih cepat)
       connectTimeout: 30000, // 30 seconds
       rejectUnauthorized: false, // Allow self-signed certificates
-      keepalive: 60, // Keepalive 60 detik
+      keepalive: 15, // Keepalive 15 detik untuk deteksi putus koneksi lebih cepat
       protocolVersion: 4, // MQTT v3.1.1
+      // WebSocket specific options
+      wsOptions: {
+        rejectUnauthorized: false,
+      }
     }
     
     // Add credentials if provided
@@ -120,9 +129,9 @@ export function connectMqtt(config: MqttConfig, options: MqttConnectionOptions):
     client.on('connect', () => {
       isConnecting = false
       
-      // Subscribe to the topic with QoS 2 (Exactly once)
+      // Subscribe to the topic with QoS 0 (At most once) untuk performa lebih baik
       if (client) {
-        client.subscribe(config.topic, { qos: 2 }, (err, granted) => {
+        client.subscribe(config.topic, { qos: 0 }, (err, granted) => {
           if (err) {
             options.onError(new Error(`Failed to subscribe to topic: ${err.message}`))
           } else if (granted && granted.length > 0) {
@@ -133,50 +142,56 @@ export function connectMqtt(config: MqttConfig, options: MqttConnectionOptions):
           }
         })
       }
+      
+      // Setup keepalive untuk menjaga koneksi tetap terhubung
+      setupKeepalive(config, options)
     })
 
-    client.on('message', (topic, message, packet: MqttPacket) => {
+    client.on('message', (topic, message) => {
       try {
-        // Gunakan packet.messageId sebagai string untuk identifikasi pesan
+        // Gunakan topik dan timestamp sebagai ID pesan
         let messageId: string | null = null;
-        
-        if (packet && typeof packet.messageId === 'number') {
-          // Gunakan string 'message' sebagai fallback jika cmd adalah undefined
-          const cmd = typeof packet.cmd === 'string' ? packet.cmd : 'message';
-          messageId = `${packet.messageId}-${cmd}`;
-        }
-        
-        if (messageId && isMessageProcessed(messageId)) {
-          // Message sudah diproses sebelumnya, abaikan
-          return;
-        }
-        
-        // Tambahkan ke daftar yang sudah diproses
-        if (messageId) {
-          addProcessedMessage(messageId);
-        }
         
         // Parse the message (expected to be JSON)
         const rawMessage = message.toString()
         
-        const rawPayload = JSON.parse(rawMessage) as HiveMqPayload
-        
-        if (typeof rawPayload.Temp === 'undefined' || 
-            typeof rawPayload.Rh === 'undefined' || 
-            typeof rawPayload.pressure === 'undefined' ||
-            typeof rawPayload["wind.Direction"] === 'undefined' ||
-            typeof rawPayload["wind.Speed"] === 'undefined' ||
-            typeof rawPayload.radiation === 'undefined' ||
-            typeof rawPayload.precipitation === 'undefined' ||
-            typeof rawPayload.timestamp === 'undefined') {
-          return
+        try {
+          const rawPayload = JSON.parse(rawMessage) as HiveMqPayload
+          
+          // Gunakan timestamp sebagai ID pesan
+          if (rawPayload.timestamp) {
+            messageId = `${topic}-${rawPayload.timestamp}`
+          }
+          
+          if (messageId && isMessageProcessed(messageId)) {
+            // Message sudah diproses sebelumnya, abaikan
+            return;
+          }
+          
+          // Tambahkan ke daftar yang sudah diproses
+          if (messageId) {
+            addProcessedMessage(messageId);
+          }
+          
+          if (typeof rawPayload.Temp === 'undefined' || 
+              typeof rawPayload.Rh === 'undefined' || 
+              typeof rawPayload.pressure === 'undefined' ||
+              typeof rawPayload["wind.Direction"] === 'undefined' ||
+              typeof rawPayload["wind.Speed"] === 'undefined' ||
+              typeof rawPayload.radiation === 'undefined' ||
+              typeof rawPayload.precipitation === 'undefined' ||
+              typeof rawPayload.timestamp === 'undefined') {
+            return
+          }
+          
+          // Convert to our format
+          const weatherData = parseMqttPayload(rawPayload)
+          
+          // Handle the data
+          options.onMessage(weatherData)
+        } catch (parseError) {
+          // Error parsing silently handled
         }
-        
-        // Convert to our format
-        const weatherData = parseMqttPayload(rawPayload)
-        
-        // Handle the data
-        options.onMessage(weatherData)
       } catch (err) {
         options.onError(new Error(`Failed to parse MQTT message: ${err instanceof Error ? err.message : String(err)}`))
       }
@@ -185,26 +200,81 @@ export function connectMqtt(config: MqttConfig, options: MqttConnectionOptions):
     client.on('error', (err) => {
       isConnecting = false
       options.onError(err)
+      
+      // Coba reconnect jika error fatal
+      if (err.message.includes('Connection refused') || 
+          err.message.includes('Unexpected close')) {
+        setTimeout(() => {
+          if (!client?.connected && !isConnecting) {
+            connectMqtt(config, options)
+          }
+        }, 5000)
+      }
     })
 
     client.on('close', () => {
       isConnecting = false
       subscribedTopic = null
       options.onDisconnect()
+      
+      // Coba reconnect secara otomatis
+      setTimeout(() => {
+        if (!client?.connected && !isConnecting) {
+          connectMqtt(config, options)
+        }
+      }, 5000)
     })
 
     client.on('offline', () => {
       options.onDisconnect()
+      
+      // Coba reconnect secara otomatis
+      setTimeout(() => {
+        if (!client?.connected && !isConnecting) {
+          connectMqtt(config, options)
+        }
+      }, 5000)
     })
   } catch (err) {
     isConnecting = false
     subscribedTopic = null
     options.onError(err instanceof Error ? err : new Error('Failed to set up MQTT connection'))
+    
+    // Coba reconnect secara otomatis
+    setTimeout(() => {
+      connectMqtt(config, options)
+    }, 5000)
   }
+}
+
+// Setup keepalive mechanism untuk menjaga koneksi tetap aktif
+function setupKeepalive(config: MqttConfig, options: MqttConnectionOptions): void {
+  // Clear previous interval if exists
+  if (keepaliveInterval) {
+    clearInterval(keepaliveInterval)
+  }
+  
+  // Interval untuk cek status koneksi dan kirim ping
+  keepaliveInterval = setInterval(() => {
+    if (client && client.connected) {
+      // Kirim pesan ping untuk menjaga koneksi tetap aktif
+      client.publish('$SYS/ping', 'ping', { qos: 0, retain: false })
+    } else if (!isConnecting) {
+      // Jika terputus tanpa proses reconnect, coba sambungkan kembali
+      disconnectMqtt()
+      connectMqtt(config, options)
+    }
+  }, 10000) // 10 detik interval
 }
 
 // Disconnect from MQTT broker
 export function disconnectMqtt(): void {
+  // Clear keepalive interval
+  if (keepaliveInterval) {
+    clearInterval(keepaliveInterval)
+    keepaliveInterval = null
+  }
+  
   if (client) {
     try {
       if (subscribedTopic) {
