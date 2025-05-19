@@ -80,6 +80,9 @@ export default function WindDirectionDistribution({ height = 150 }: WindDirectio
             const percentage = Math.round((value / total) * 100)
             return `${label}: ${value} (${percentage}%)`
           },
+          title: (tooltipItems) => {
+            return `Arah Angin: ${tooltipItems[0].label}`
+          }
         },
       },
       title: {

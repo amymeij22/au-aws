@@ -49,13 +49,13 @@ export default function RadiationChart({ height = 150 }: RadiationChartProps) {
   }
 
   const data = {
-    labels: last24Hours.map((item) => format(new Date(item.timestamp), "HH:mm")),
+    labels: last24Hours.map((item) => format(new Date(item.timestamp), "HH:mm:ss")),
     datasets: [
       {
         label: "Radiasi (W/m²)",
         data: last24Hours.map((item) => item.radiation),
-        borderColor: "#d97706",
-        backgroundColor: "rgba(217, 119, 6, 0.1)",
+        borderColor: "#f59e0b",
+        backgroundColor: "rgba(245, 158, 11, 0.1)",
         borderWidth: 2,
         pointRadius: 1,
         tension: 0.3,
@@ -74,6 +74,19 @@ export default function RadiationChart({ height = 150 }: RadiationChartProps) {
       tooltip: {
         mode: "index",
         intersect: false,
+        callbacks: {
+          title: (context) => {
+            if (context[0].label) {
+              // Cari data asli berdasarkan indeks
+              const dataIndex = context[0].dataIndex;
+              if (dataIndex !== undefined && last24Hours[dataIndex]) {
+                // Format timestamp lengkap
+                return format(new Date(last24Hours[dataIndex].timestamp), "dd MMM yyyy HH:mm:ss");
+              }
+            }
+            return context[0].label || '';
+          }
+        }
       },
       title: {
         display: false,

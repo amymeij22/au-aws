@@ -418,10 +418,8 @@ export function WeatherDataProvider({ children }: { children: ReactNode }) {
         return;
       }
       
-      // Add this timestamp to processed list first
-      addToProcessedCache(data.timestamp);
-
       // Cek langsung ke database apakah data dengan timestamp yang sama sudah ada
+      // Dilakukan sebelum menambahkan ke cache untuk memastikan konsistensi
       const { data: existingData, error: checkError } = await supabase
         .from('weather_data')
         .select('id')
@@ -430,14 +428,21 @@ export function WeatherDataProvider({ children }: { children: ReactNode }) {
       
       if (checkError) {
         // Error checking for duplicates silently handled
+        console.warn('Error checking for existing data:', checkError.message);
       }
       
       // Jika data sudah ada di database, tidak perlu insert lagi
       if (existingData) {
+        // Tambahkan ke cache agar tidak dicek ulang di masa depan
+        addToProcessedCache(data.timestamp);
+        
         // Update local state saja tanpa insert ulang ke database
         updateLocalState(data);
         return;
       }
+
+      // Add this timestamp to processed list 
+      addToProcessedCache(data.timestamp);
 
       // Add to Supabase
       if (stationMetadata) {
@@ -462,7 +467,9 @@ export function WeatherDataProvider({ children }: { children: ReactNode }) {
           // Cek apakah error karena duplicate constraint
           if (insertError.code === '23505') { // PostgreSQL duplicate key violation
             // Diam-diam lewati duplikat yang terdeteksi
+            console.info('Ignored duplicate weather data with timestamp:', data.timestamp);
           } else {
+            console.error('Error inserting weather data:', insertError.message);
             setError(`Gagal menyimpan data cuaca: ${insertError.message}`);
           }
           

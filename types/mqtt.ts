@@ -3,8 +3,8 @@ export interface MqttConfig {
   url: string
   port: number
   topic: string
-  username: string
-  password: string
+  username?: string
+  password?: string
   isActive: boolean
 }
 
